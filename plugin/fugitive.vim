@@ -72,7 +72,7 @@ let s:git_versions = {}
 
 function! fugitive#git_version(...) abort
   if !has_key(s:git_versions, g:fugitive_git_executable)
-    let s:git_versions[g:fugitive_git_executable] = matchstr(system(g:fugitive_git_executable.' --version'), "\\S\\+\n")
+    let s:git_versions[g:fugitive_git_executable] = matchstr(vimproc#system(g:fugitive_git_executable.' --version'), "\\S\\+\n")
   endif
   return s:git_versions[g:fugitive_git_executable]
 endfunction
@@ -367,7 +367,7 @@ function! s:repo_git_command(...) dict abort
 endfunction
 
 function! s:repo_git_chomp(...) dict abort
-  return s:sub(system(call(self.git_command,a:000,self)),'\n$','')
+  return s:sub(vimproc#system(call(self.git_command,a:000,self)),'\n$','')
 endfunction
 
 function! s:repo_git_chomp_in_tree(...) dict abort
@@ -444,7 +444,7 @@ endfunction
 call s:add_methods('repo',['dirglob','superglob'])
 
 function! s:repo_config(conf) dict abort
-  return matchstr(system(s:repo().git_command('config').' '.a:conf),"[^\r\n]*")
+  return matchstr(vimproc#system(s:repo().git_command('config').' '.a:conf),"[^\r\n]*")
 endfun
 
 function! s:repo_user() dict abort
@@ -702,7 +702,7 @@ endfunction
 
 function! fugitive#git_commands() abort
   if !exists('s:exec_path')
-    let s:exec_path = s:sub(system(g:fugitive_git_executable.' --exec-path'),'\n$','')
+    let s:exec_path = s:sub(vimproc#system(g:fugitive_git_executable.' --exec-path'),'\n$','')
   endif
   return map(split(glob(s:exec_path.'/git-*'),"\n"),'s:sub(v:val[strlen(s:exec_path)+5 : -1],"\\.exe$","")')
 endfunction
@@ -1048,7 +1048,7 @@ function! s:Commit(args, ...) abort
     if !has('gui_running')
       redraw!
     endif
-    if !v:shell_error
+    if !vimproc#get_last_status()
       if filereadable(outfile)
         for line in readfile(outfile)
           echo line
@@ -1527,7 +1527,7 @@ function! s:Write(force,...) abort
   else
     let error = s:repo().git_chomp_in_tree('add', '--', path)
   endif
-  if v:shell_error
+  if vimproc#get_last_status()
     let v:errmsg = 'fugitive: '.error
     return 'echoerr v:errmsg'
   endif
@@ -1834,7 +1834,7 @@ function! s:Move(force,destination) abort
     let discarded = s:buffer().setvar('&swapfile',0)
   endif
   let message = call(s:repo().git_chomp_in_tree,['mv']+(a:force ? ['-f'] : [])+['--', s:buffer().path(), destination], s:repo())
-  if v:shell_error
+  if vimproc#get_last_status()
     let v:errmsg = 'fugitive: '.message
     return 'echoerr v:errmsg'
   endif
@@ -1877,7 +1877,7 @@ function! s:Remove(force) abort
     let cmd += ['--force']
   endif
   let message = call(s:repo().git_chomp_in_tree,cmd+['--',s:buffer().path()],s:repo())
-  if v:shell_error
+  if vimproc#get_last_status()
     let v:errmsg = 'fugitive: '.s:sub(message,'error:.*\zs\n\(.*-f.*',' (add ! to force)')
     return 'echoerr '.string(v:errmsg)
   else
@@ -1955,7 +1955,7 @@ function! s:Blame(bang,line1,line2,count,args) abort
           execute cd.'`=dir`'
           unlet dir
         endif
-        if v:shell_error
+        if vimproc#get_last_status()
           call s:throw(join(readfile(error),"\n"))
         endif
         for winnr in range(winnr('$'),1,-1)
@@ -2423,9 +2423,9 @@ function! s:ReplaceCmd(cmd,...) abort
     endif
     if s:winshell()
       let cmd_escape_char = &shellxquote == '(' ?  '^' : '^^^'
-      call system('cmd /c "'.prefix.s:gsub(a:cmd,'[<>]', cmd_escape_char.'&').redir.'"')
+      call vimproc#system('cmd /c "'.prefix.s:gsub(a:cmd,'[<>]', cmd_escape_char.'&').redir.'"')
     else
-      call system(' ('.prefix.a:cmd.redir.') ')
+      call vimproc#system(' ('.prefix.a:cmd.redir.') ')
     endif
   finally
     if exists('old_index')
@@ -2579,11 +2579,11 @@ function! s:BufWriteIndexFile() abort
     let info = old_mode.' '.sha1.' '.stage."\t".path
     call writefile([info],tmp)
     if s:winshell()
-      let error = system('type '.s:gsub(tmp,'/','\\').'|'.s:repo().git_command('update-index','--index-info'))
+      let error = vimproc#system('type '.s:gsub(tmp,'/','\\').'|'.s:repo().git_command('update-index','--index-info'))
     else
-      let error = system(s:repo().git_command('update-index','--index-info').' < '.tmp)
+      let error = vimproc#system(s:repo().git_command('update-index','--index-info').' < '.tmp)
     endif
-    if v:shell_error == 0
+    if vimproc#get_last_status() == 0
       setlocal nomodified
       if exists('#BufWritePost')
         execute 'doautocmd BufWritePost '.s:fnameescape(expand('%:p'))
