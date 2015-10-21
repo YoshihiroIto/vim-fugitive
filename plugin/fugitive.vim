@@ -2425,7 +2425,9 @@ function! s:ReplaceCmd(cmd,...) abort
       let cmd_escape_char = &shellxquote == '(' ?  '^' : '^^^'
       call vimproc#system('cmd /c "'.prefix.s:gsub(a:cmd,'[<>]', cmd_escape_char.'&').redir.'"')
     else
-      call vimproc#system(' ('.prefix.a:cmd.redir.') ')
+      " todo:vimprocで動かす
+      " call vimproc#system(' ('.prefix.a:cmd.redir.') ')
+       call system(' ('.prefix.a:cmd.redir.') ')
     endif
   finally
     if exists('old_index')
